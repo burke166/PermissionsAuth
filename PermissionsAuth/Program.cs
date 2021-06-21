@@ -1,7 +1,10 @@
+using System;
+using System.IO;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System;
+using NLog;
 using NLog.Web;
 
 
@@ -11,21 +14,34 @@ namespace PermissionsAuth
     {
         public static void Main(string[] args)
         {
+            string configPath = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location), "appsettings.json");
+            string logPath = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location), "logs");
+
+            var configurationBuilder = new ConfigurationBuilder().AddJsonFile(configPath);
+            var configuration = configurationBuilder.Build();
+
+            GlobalDiagnosticsContext.Set("configDir", logPath);
+            GlobalDiagnosticsContext.Set("connectionString", configuration["DefaultConnection"]);
+
             var logger = NLogBuilder.ConfigureNLog("nlog.config").GetCurrentClassLogger();
+
+            var host = CreateHostBuilder(args).Build();
+
             try
             {
+                if (!Directory.Exists(logPath))
+                    Directory.CreateDirectory(logPath);
+
                 logger.Debug("init main");
-                CreateHostBuilder(args).Build().Run();
+                host.Run();
             }
-            catch (Exception exception)
+            catch (Exception ex)
             {
-                //NLog: catch setup errors
-                logger.Error(exception, "Stopped program because of exception");
+                logger.Fatal(ex, "Stopped program because of exception.");
                 throw;
             }
             finally
             {
-                // Ensure to flush and stop internal timers/threads before application-exit (Avoid segmentation fault on Linux)
                 NLog.LogManager.Shutdown();
             }
         }
@@ -39,7 +55,7 @@ namespace PermissionsAuth
                 .ConfigureLogging(logging =>
                 {
                     logging.ClearProviders();
-                    logging.SetMinimumLevel(LogLevel.Trace);
+                    logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Information);
                 })
                 .UseNLog();  // NLog: Setup NLog for Dependency injection
     }

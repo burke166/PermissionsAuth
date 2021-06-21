@@ -19,24 +19,12 @@ namespace PermissionsAuth.Constants
 
         public const string All = "Permissions.All";
 
-        public static string GetViewPermission(string module)
+        public static class Users
         {
-            return $"Permissions.{module}.View";
-        }
-
-        public static string GetCreatePermission(string module)
-        {
-            return $"Permissions.{module}.Create";
-        }
-
-        public static string GetEditPermission(string module)
-        {
-            return $"Permissions.{module}.Edit";
-        }
-
-        public static string GetDeletePermission(string module)
-        {
-            return $"Permissions.{module}.Delete";
+            public const string View = "Permissions.Users.View";
+            public const string Create = "Permissions.Users.Create";
+            public const string Edit = "Permissions.Users.Edit";
+            public const string Delete = "Permissions.Users.Delete";
         }
     }
 }

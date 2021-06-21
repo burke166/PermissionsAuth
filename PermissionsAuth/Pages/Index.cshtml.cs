@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
 using PermissionsAuth.Constants;
+using PermissionsAuth.Services;
 
 namespace PermissionsAuth.Pages
 {
@@ -14,16 +15,21 @@ namespace PermissionsAuth.Pages
     public class IndexModel : PageModel
     {
         private readonly ILogger<IndexModel> _logger;
-        public string Permission { get; set; }
+        private readonly IUserService _userService;
+        public List<string> Permissions { get; set; }
 
-        public IndexModel(ILogger<IndexModel> logger)
+        public IndexModel(ILogger<IndexModel> logger, IUserService userService)
         {
             _logger = logger;
+            _userService = userService;
         }
 
-        public void OnGet()
+        public async Task<IActionResult> OnGetAsync()
         {
-            Permission = Permissions.Users.View;
+            var auth0UserId = User.Claims.FirstOrDefault(c => c.Type == @"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+            Permissions = (await _userService.GetUserPermissionsAsync(auth0UserId)).Value;
+
+            return Page();
         }
     }
 }

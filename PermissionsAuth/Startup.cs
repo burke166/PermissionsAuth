@@ -17,8 +17,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
+using NLog;
 using PermissionsAuth.Authorization;
+using PermissionsAuth.Data;
+using PermissionsAuth.Services;
 
 namespace PermissionsAuth
 {
@@ -34,8 +38,10 @@ namespace PermissionsAuth
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.Configure<Configuration.Auth0Options>(Configuration.GetSection("Auth0"));
+            var serverVersion = new MariaDbServerVersion(new Version(10, 3, 29));
+            var connectionString = Configuration["ConnectionStrings:DefaultConnection"];
 
+            services.Configure<Configuration.Auth0Options>(Configuration.GetSection("Auth0"));
 
             services.AddAuthentication(options =>
             {
@@ -70,6 +76,19 @@ namespace PermissionsAuth
 
                 options.Events = new OpenIdConnectEvents
                 {
+                    OnTokenValidated = async (context) =>
+                    {
+                        var auth0UserId = context.Principal.Claims.FirstOrDefault(c => c.Type == @"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+
+                        var optionsBuilder = new DbContextOptionsBuilder<Db>();
+                        optionsBuilder.UseMySql(connectionString, serverVersion);
+
+                        using (var _db = new Db(optionsBuilder.Options))
+                        {
+                            var service = new UserService(_db);
+                            await service.CreateUserIfNotExistsAsync(auth0UserId, context.Principal);
+                        }
+                    },
                     OnRedirectToIdentityProviderForSignOut = (context) =>
                     {
                         var logoutUri = $"https://{Configuration["Auth0:Domain"]}/v2/logout?client_id={Configuration["Auth0:ClientId"]}";
@@ -97,11 +116,12 @@ namespace PermissionsAuth
                 };
             });
 
-            var serverVersion = new MariaDbServerVersion(new Version(10, 3, 29));
-            services.AddDbContext<Data.Db>(options => options.UseMySql(Configuration["ConnectionStrings:DefaultConnection"], serverVersion));
+
+            services.AddDbContext<Data.Db>(options => options.UseMySql(connectionString, serverVersion));
 
             services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
             services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+            services.AddScoped<IUserService, UserService>();
 
             services.AddRazorPages();
 
@@ -133,11 +153,12 @@ namespace PermissionsAuth
 
             app.UseRouting();
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapRazorPages();
+                endpoints.MapRazorPages().AllowAnonymous();
             });
         }
     }

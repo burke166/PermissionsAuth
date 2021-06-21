@@ -11,6 +11,7 @@ namespace PermissionsAuth.Data
         public DbSet<UserAccount> UserAccounts { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }
         public DbSet<AccessToken> Tokens { get; set; }
+        public DbSet<Log> Logs { get; set; }
 
         public Db(DbContextOptions opt) : base(opt)
         {
