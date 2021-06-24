@@ -4,11 +4,22 @@
     ViewData["Title"] = "Home page";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-    @foreach (string permission in Model.Permissions)
-            {
-                @permission <br/>
-            }
+<div class="container">
+    @if (User.Identity.IsAuthenticated)
+    {
+        <h1 class="title">
+            Welcome, @User.Identity.Name
+        </h1>
+        @foreach (string permission in Model.Permissions)
+        {
+            <p>@permission</p>
+        }
+    }
+    else
+    {
+        <h1 class="title">
+            Please log in to see information.
+        </h1>
+    }
+
 </div>
